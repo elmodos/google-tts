@@ -51,11 +51,11 @@ def split_text(text, max_length=100):
     return text_chunks
 
 
-def start_speaking(text, language):
+def start_speaking(text, language, speed=1.0):
     # Enforcing unicode
     if not isinstance(text, unicode):
         text = unicode(text, "utf-8")
-
+        
     # Google TTS accepts text strings under 100 characters long, so splitting smart way
     text_lines = split_text(text)
     file_name = './speech.mp3'
@@ -69,6 +69,7 @@ def start_speaking(text, language):
                   'idx': idx,
                   'tl': language,
                   'textlen': len(val),
+                  'ttsspeed': speed,
                   'q': val.encode('utf-8')
                   }
         url_query = urllib.urlencode(params)
@@ -112,6 +113,9 @@ def parse_arguments():
     # language i.e. uk_UA or en
     parser.add_argument('-l', '--language', action='store', nargs='?', help='Language to speak text in.', default='en')
 
+    # speech speed, float 0.25, 1.0, 2.0
+    parser.add_argument('-p', '--speed', action='store', nargs='?', help='Speech speed, i.e. 0.24 or 1.0', default='1.0')
+
     # provide a file to speak from or a string
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-f', '--file', type=argparse.FileType('r'), help='File to read text from.')
@@ -131,4 +135,5 @@ if __name__ == "__main__":
     if args.string:
         input_text = ' '.join(map(str, args.string))
 
-    start_speaking(input_text, args.language)
+    start_speaking(input_text, args.language, args.speed)
+    
