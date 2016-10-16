@@ -52,6 +52,10 @@ def split_text(text, max_length=100):
 
 
 def start_speaking(text, language):
+    # Enforcing unicode
+    if not isinstance(text, unicode):
+        text = unicode(text, "utf-8")
+
     # Google TTS accepts text strings under 100 characters long, so splitting smart way
     text_lines = split_text(text)
     file_name = './speech.mp3'
@@ -127,5 +131,4 @@ if __name__ == "__main__":
     if args.string:
         input_text = ' '.join(map(str, args.string))
 
-    input_text = unicode(input_text, "utf-8")
     start_speaking(input_text, args.language)
