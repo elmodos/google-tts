@@ -50,7 +50,7 @@ def split_text(text, max_length=100):
     return text_chunks
 
 
-def play_audio_file(file_name, speed=1.0):
+def play_audio_file(file_name, speed="1.0"):
     subprocess.call(["mplayer", "-af", "scaletempo", "-speed", speed, file_name])
 
 
