@@ -5,8 +5,7 @@ import argparse
 import os
 import urllib
 import urllib2
-from pydub import AudioSegment
-from pydub.playback import play
+import subprocess
 
 # string to be used as split points for long strings that don't fit in 100 symbols
 delimiters = ["\n\n",
@@ -51,6 +50,10 @@ def split_text(text, max_length=100):
     return text_chunks
 
 
+def play_audio_file(file_name, speed=1.0):
+    subprocess.call(["mplayer", "-af", "scaletempo", "-speed", speed, file_name])
+
+
 def start_speaking(text, language, speed=1.0):
     # Enforcing unicode
     if not isinstance(text, unicode):
@@ -69,7 +72,6 @@ def start_speaking(text, language, speed=1.0):
                   'idx': idx,
                   'tl': language,
                   'textlen': len(val),
-                  'ttsspeed': speed,
                   'q': val.encode('utf-8')
                   }
         url_query = urllib.urlencode(params)
@@ -98,8 +100,7 @@ def start_speaking(text, language, speed=1.0):
                     output.close()
 
                 # play mp3 file
-                song = AudioSegment.from_mp3(file_name)
-                play(song)
+                play_audio_file(file_name=file_name, speed=speed)
 
                 # delete file
                 os.remove(file_name)
@@ -136,4 +137,3 @@ if __name__ == "__main__":
         input_text = ' '.join(map(str, args.string))
 
     start_speaking(input_text, args.language, args.speed)
-    
