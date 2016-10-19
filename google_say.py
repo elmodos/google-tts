@@ -6,6 +6,7 @@ import os
 import urllib
 import urllib2
 import subprocess
+import threading
 
 # string to be used as split points for long strings that don't fit in 100 symbols
 delimiters = ["\n\n",
@@ -16,6 +17,55 @@ delimiters = ["\n\n",
               ".",
               ","
               ]
+
+
+class DownloadThread(threading.Thread):
+    def __init__(self, text, language, total=0, index=0):
+        super(DownloadThread, self).__init__()
+        self.text = text
+        self.language = language
+        self.total = total
+        self.index = index
+        self.file_name = './speech%i.mp3' % index
+
+    def run(self):
+        # format direct link
+        google_tts_url_base = 'http://translate.google.com/translate_tts'
+        params = {'ie': 'UTF-8',
+                  'client': 'tw-ob',
+                  'total': self.total,
+                  'idx': self.index,
+                  'tl': self.language,
+                  'textlen': len(self.text),
+                  'q': self.text.encode('utf-8')
+                  }
+        url_query = urllib.urlencode(params)
+        url = "%s?%s" % (google_tts_url_base, url_query)
+
+        # http headers sniffed from Chrome
+        headers = {"Host": "translate.google.com",
+                   "Cache-Control": "max-age=0",
+                   "Connection": "close",
+                   "Upgrade-Insecure-Requests": "1",
+                   "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                   "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) "
+                                 "AppleWebKit/537.36 (KHTML, like Gecko) "
+                                 "Chrome/53.0.2785.143 Safari/537.36"
+                   }
+        req = urllib2.Request(url=url, headers=headers)
+        sys.stdout.write('Requesting mp3 for text:\n"%s"\n' % self.text)
+        sys.stdout.flush()
+        if len(self.text) > 0:
+            try:
+                # run request
+                response = urllib2.urlopen(req)
+
+                # write mp3 data
+                with open(self.file_name, 'wb') as output:
+                    output.write(response.read())
+                    output.close()
+            except urllib2.URLError as e:
+                print ('Error: "%s"' % e)
 
 
 def split_text(text, max_length=100):
@@ -54,58 +104,53 @@ def play_audio_file(file_name, speed="1.0"):
     subprocess.call(["mplayer", "-af", "scaletempo", "-speed", speed, file_name])
 
 
-def start_speaking(text, language, speed=1.0):
+def start_speaking(text, language, speed="1.0"):
     # Enforcing unicode
     if not isinstance(text, unicode):
         text = unicode(text, "utf-8")
-        
-    # Google TTS accepts text strings under 100 characters long, so splitting smart way
+
+    # get short strings list
     text_lines = split_text(text)
-    file_name = './speech.mp3'
+
+    # iterations
+    total = len(text_lines)
+    index = 0
+    string = text_lines[index]
+    file_name_to_play = None
+
+    while True:
+        # start downloading next mp3 file
+        if index >= total:
+            thread = DownloadThread(string, language, total, index)
+            thread.start()
+        else:
+            thread = None
+
+        # play current mp3 file if any
+        if file_name_to_play is not None:
+            play_audio_file(file_name_to_play, speed)
+            os.remove(file_name_to_play)
+
+        # wait until download thread is done
+        if thread is not None:
+            thread.join()
+            file_name_to_play = thread.file_name
+        else:
+            file_name_to_play = None
+            index += 1
+            break
 
     for idx, val in enumerate(text_lines):
-        # format direct link
-        google_tts_url_base = 'http://translate.google.com/translate_tts'
-        params = {'ie': 'UTF-8',
-                  'client': 'tw-ob',
-                  'total': len(text_lines),
-                  'idx': idx,
-                  'tl': language,
-                  'textlen': len(val),
-                  'q': val.encode('utf-8')
-                  }
-        url_query = urllib.urlencode(params)
-        url = "%s?%s" % (google_tts_url_base, url_query)
+        thread = DownloadThread(val, language, len(text_lines), idx)
 
-        # http headers sniffed from Chrome
-        headers = {"Host": "translate.google.com",
-                   "Cache-Control": "max-age=0",
-                   "Connection": "close",
-                   "Upgrade-Insecure-Requests": "1",
-                   "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                   "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) "
-                                 "AppleWebKit/537.36 (KHTML, like Gecko) "
-                                 "Chrome/53.0.2785.143 Safari/537.36"
-                   }
-        req = urllib2.Request(url=url, headers=headers)
-        sys.stdout.write('Requesting mp3 for text:\n"%s"\n' % val)
-        sys.stdout.flush()
-        if len(val) > 0:
-            try:
-                response = urllib2.urlopen(req)
+        # temporary
+        thread.run()
 
-                # write mp3 data
-                with open(file_name, 'wb') as output:
-                    output.write(response.read())
-                    output.close()
+        # play mp3 file
+        play_audio_file(file_name=thread.file_name, speed=speed)
 
-                # play mp3 file
-                play_audio_file(file_name=file_name, speed=speed)
-
-                # delete file
-                os.remove(file_name)
-            except urllib2.URLError as e:
-                print ('Error: "%s"' % e)
+        # delete file
+        os.remove(thread.file_name)
 
 
 def parse_arguments():
