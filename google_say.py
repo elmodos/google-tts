@@ -115,12 +115,13 @@ def start_speaking(text, language, speed="1.0"):
     # iterations
     total = len(text_lines)
     index = 0
-    string = text_lines[index]
     file_name_to_play = None
 
     while True:
         # start downloading next mp3 file
-        if index >= total:
+        if index < total:
+            # current string to download
+            string = text_lines[index]
             thread = DownloadThread(string, language, total, index)
             thread.start()
         else:
@@ -131,26 +132,16 @@ def start_speaking(text, language, speed="1.0"):
             play_audio_file(file_name_to_play, speed)
             os.remove(file_name_to_play)
 
+        # iterate
+        index += 1
+
         # wait until download thread is done
         if thread is not None:
             thread.join()
             file_name_to_play = thread.file_name
         else:
             file_name_to_play = None
-            index += 1
             break
-
-    for idx, val in enumerate(text_lines):
-        thread = DownloadThread(val, language, len(text_lines), idx)
-
-        # temporary
-        thread.run()
-
-        # play mp3 file
-        play_audio_file(file_name=thread.file_name, speed=speed)
-
-        # delete file
-        os.remove(thread.file_name)
 
 
 def parse_arguments():
