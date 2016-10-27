@@ -97,6 +97,8 @@ def split_text(text, max_length=100):
         text_chunks.append(substring)
         index_start = index_start_next
 
+    # filter out empty lines
+    text_chunks = [line for line in text_chunks if len(line) > 0]
     return text_chunks
 
 
@@ -130,7 +132,10 @@ def start_speaking(text, language, speed="1.0"):
         # play current mp3 file if any
         if file_name_to_play is not None:
             play_audio_file(file_name_to_play, speed)
-            os.remove(file_name_to_play)
+            try:
+                os.remove(file_name_to_play)
+            except:
+                pass
 
         # iterate
         index += 1
