@@ -7,6 +7,8 @@ import urllib
 import urllib2
 import subprocess
 import threading
+import tempfile
+
 
 # string to be used as split points for long strings that don't fit in 100 symbols
 delimiters = ["\n\n",
@@ -18,6 +20,8 @@ delimiters = ["\n\n",
               ","
               ]
 
+temp_dir = tempfile.mkdtemp(prefix="google_say_temp")
+
 
 class DownloadThread(threading.Thread):
     def __init__(self, text, language, total=0, index=0):
@@ -26,7 +30,7 @@ class DownloadThread(threading.Thread):
         self.language = language
         self.total = total
         self.index = index
-        self.file_name = './speech%i.mp3' % index
+        self.file_name = os.path.join(temp_dir, 'speech%i.mp3' % index)
 
     def run(self):
         # format direct link
@@ -147,6 +151,12 @@ def start_speaking(text, language, speed="1.0"):
         else:
             file_name_to_play = None
             break
+
+    # delete temp dir
+    try:
+        os.removedirs(temp_dir)
+    except:
+        pass
 
 
 def parse_arguments():
