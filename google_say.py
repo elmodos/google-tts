@@ -21,6 +21,9 @@ delimiters = ["\n\n",
               ]
 
 temp_dir = tempfile.mkdtemp(prefix="google_say_temp")
+player_lock = threading.RLock()
+player_process = None
+should_stop_playing = False
 
 
 class DownloadThread(threading.Thread):
@@ -107,10 +110,21 @@ def split_text(text, max_length=100):
 
 
 def play_audio_file(file_name, speed="1.0"):
-    subprocess.call(["mplayer", "-af", "scaletempo", "-speed", speed, file_name])
+    global player_lock
+    global player_process
+
+    # run player and store process id
+    player_lock.acquire()
+    player_process = subprocess.Popen(args=["mplayer", "-af", "scaletempo", "-speed", speed, file_name])
+    player_lock.release()
+
+    # lock thread until player process exits
+    player_process.wait()
 
 
 def start_speaking(text, language, speed="1.0"):
+    global should_stop_playing
+
     # Enforcing unicode
     if not isinstance(text, unicode):
         text = unicode(text, "utf-8")
@@ -124,6 +138,10 @@ def start_speaking(text, language, speed="1.0"):
     file_name_to_play = None
 
     while True:
+        # check if killed from outside, kind of thread safe, read only
+        if should_stop_playing:
+            break
+
         # start downloading next mp3 file
         if index < total:
             # current string to download
@@ -157,6 +175,20 @@ def start_speaking(text, language, speed="1.0"):
         os.removedirs(temp_dir)
     except:
         pass
+
+
+def stop_speaking():
+    global player_process
+    global player_lock
+    global should_stop_playing
+
+    # force kill player
+    player_lock.acquire()
+    should_stop_playing = True
+    if player_process is not None:
+        print("Killing player process...")
+        player_process.terminate()
+    player_lock.release()
 
 
 def parse_arguments():
