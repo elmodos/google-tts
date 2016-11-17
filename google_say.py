@@ -187,7 +187,10 @@ def stop_speaking():
     should_stop_playing = True
     if player_process is not None:
         print("Killing player process...")
-        player_process.terminate()
+        try:
+            player_process.terminate()
+        except:
+            print("Cannot kill player process, it might already return")
     player_lock.release()
 
 
