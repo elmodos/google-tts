@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import argparse
 import os
-import urllib
-import urllib2
+import urllib.parse
+import urllib.request
 import subprocess
 import threading
 import tempfile
@@ -46,7 +46,7 @@ class DownloadThread(threading.Thread):
                   'textlen': len(self.text),
                   'q': self.text.encode('utf-8')
                   }
-        url_query = urllib.urlencode(params)
+        url_query = urllib.parse.urlencode(params)
         url = "%s?%s" % (google_tts_url_base, url_query)
 
         # http headers sniffed from Chrome
@@ -59,19 +59,19 @@ class DownloadThread(threading.Thread):
                                  "AppleWebKit/537.36 (KHTML, like Gecko) "
                                  "Chrome/53.0.2785.143 Safari/537.36"
                    }
-        req = urllib2.Request(url=url, headers=headers)
+        req = urllib.request.Request(url=url, headers=headers)
         sys.stdout.write('Requesting mp3 for text:\n"%s"\n' % self.text)
         sys.stdout.flush()
         if len(self.text) > 0:
             try:
                 # run request
-                response = urllib2.urlopen(req)
+                response = urllib.request.urlopen(req)
 
                 # write mp3 data
                 with open(self.file_name, 'wb') as output:
                     output.write(response.read())
                     output.close()
-            except urllib2.URLError as e:
+            except urllib.URLError as e:
                 print ('Error: "%s"' % e)
 
 
@@ -109,7 +109,7 @@ def split_text(text, max_length=100):
     return text_chunks
 
 
-def play_audio_file(file_name, speed="1.0"):
+def play_audio_file(file_name, speed):
     global player_lock
     global player_process
 
@@ -122,12 +122,8 @@ def play_audio_file(file_name, speed="1.0"):
     player_process.wait()
 
 
-def start_speaking(text, language, speed="1.0"):
+def start_speaking(text, language, speed):
     global should_stop_playing
-
-    # Enforcing unicode
-    if not isinstance(text, unicode):
-        text = unicode(text, "utf-8")
 
     # get short strings list
     text_lines = split_text(text)
